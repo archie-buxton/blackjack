@@ -1,0 +1,1016 @@
+try:
+    import simplegui
+except ImportError:
+    import SimpleGUICS2Pygame.simpleguics2pygame as simplegui
+import random
+import math
+import time
+import simpleplot
+
+# load card sprite - 949x392 - source: jfitz.com
+CARD_SIZE = (73, 98)
+CARD_CENTER = (36.5, 49)
+card_images = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/cards.jfitz.png")
+
+CARD_BACK_SIZE = (71, 96)
+CARD_BACK_CENTER = (35.5, 48)
+card_back = simplegui.load_image("http://commondatastorage.googleapis.com/codeskulptor-assets/card_back.png")
+
+#the images for the complex view
+complex_images = simplegui.load_image("https://static.wixstatic.com/media/f781b0_ae4d4f4e854743379adcee615c869702~mv2.png")
+complex_back = simplegui.load_image("https://static.wixstatic.com/media/f781b0_d58d06340e024c0497d4cbffeb5cf796~mv2.png")
+
+BACKGROUND_SIZE = (800, 600)
+BACKGROUND_CENTER = (400, 300)
+background = simplegui.load_image("https://i.imgur.com/o1nnISe.png") 
+btn_startOver = simplegui.load_image("https://i.imgur.com/GvVcP7R.png")
+btn_menu = simplegui.load_image("https://i.imgur.com/kPMXzzZ.png")
+btn_menu1 = simplegui.load_image("https://i.imgur.com/Qpr3ZUP.png")
+btn_menu2 = simplegui.load_image("https://i.imgur.com/TnnhQUI.png")
+btn_hit = simplegui.load_image("https://i.imgur.com/MDB751F.png")
+btn_stand = simplegui.load_image("https://i.imgur.com/ROLmKJl.png")
+btn_deal = simplegui.load_image("https://i.imgur.com/HE22FXc.png")
+outcomeContainer = simplegui.load_image("https://i.imgur.com/SgCYXE8.png")
+aatext = ''
+
+# countdown global veriables
+t = 1200
+display = "2:00.0"
+counter = 5
+
+# initialize some useful global variables
+in_play = False
+outcome = ""
+house_score = 0
+player_score = 0
+running = 1
+
+# set inital layout
+layout = "draw_complex"
+old_layout = "draw_complex"
+
+CARD_SPACE = 5
+FONT_SIZE = 24
+FRAME_WIDTH = 800
+FRAME_HEIGHT = 600
+
+DEALER_POS = ((FRAME_WIDTH - CARD_SPACE) / 2.0 - CARD_SIZE[0], 100)
+PLAYER_POS = (DEALER_POS[0], 400)
+
+GREEN = 'Green'
+GREEN_LIGHT = '#40d040'
+GREEN_DARK = '#007000'
+BACKGROUND_COLOUR = 'Green'
+FONT_COLOUR = GREEN_LIGHT
+simpleScene = 1
+
+Scatter_plot_number_of_wins = [(0, 0)]
+Game_Number = 0
+
+# define globals for cards
+SUITS = ('C', 'S', 'H', 'D')
+RANKS = ('A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K')
+VALUES = {'A':1, '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, 'T':10, 'J':10, 'Q':10, 'K':10}
+
+# early loading of sounds so they play faster
+volume = 0.6
+old_volume = 0
+audio = True
+
+card_placing_sound = simplegui.load_sound('http://biomediaproject.com/bmp/files/sfx/v2.0.0%20Streaming/Sound%20Effects/MNOLG/Cards.mp3')
+start_sound = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_9d5910ddebd74b07ad1399a12e50a850.mp3/181162942.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE2MjkzMiwiZXhwIjoxNjIxNDIyMTQyLCJqdGkiOiJmOWY5NTM3YWI5MzIiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfOWQ1OTEwZGRlYmQ3NGIwN2FkMTM5OWExMmU1MGE4NTAubXAzLzE4MTE2Mjk0Mi5tcDMifV1dfQ.pF1Q4kX3Kodnlj-PONKSpglBggwhXNZfjQ09e5r8f10&filename=bryce+-+start.mp3')
+lose_sound = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_9a029d6865a6449e826fd6bae9fbb119.wav/181162914.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE2MjkwNSwiZXhwIjoxNjIxNDIyMTE1LCJqdGkiOiJmODA1ZDRkNjliM2YiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfOWEwMjlkNjg2NWE2NDQ5ZTgyNmZkNmJhZTlmYmIxMTkud2F2LzE4MTE2MjkxNC5tcDMifV1dfQ.YLZ-dDWmRHJCdd5l2L5hb4URibxTIgG2bRVPRlc2qok&filename=bryce+-+lose.mp3')
+win_sound = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_7e2ca99fa0444b0bad5c1da6a73044cc.wav/181162978.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE2Mjk2OSwiZXhwIjoxNjIxNDIyMTc5LCJqdGkiOiJjMTBlYTExMTJiNWUiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfN2UyY2E5OWZhMDQ0NGIwYmFkNWMxZGE2YTczMDQ0Y2Mud2F2LzE4MTE2Mjk3OC5tcDMifV1dfQ.S_4Udps6XfEWHen6AeD4yrJrHBv-FWCv-gk8Hoa3Z8g&filename=bryce+-+win.mp3')
+
+#These sounds are the ones that read out what the score is and what to do next
+tie = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_6ce79177be504ba6905b5b97a05f6ecc.m4a/181182034.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MjAyNSwiZXhwIjoxNjIxNDQxMjM1LCJqdGkiOiI3NmJhYmUwMTJlNDQiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfNmNlNzkxNzdiZTUwNGJhNjkwNWI1Yjk3YTA1ZjZlY2MubTRhLzE4MTE4MjAzNC5tcDMifV1dfQ.ncAeXgPcyRVNW8vdbLFAk0WF2HfVz_NxWOwgYWd9lVY&filename=group+h+-+its+a+tie.mp3')
+press_space_sound = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_baf3d6d4bf19466191c5907624cce447.m4a/181182085.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MjA3NiwiZXhwIjoxNjIxNDQxMjg2LCJqdGkiOiJjMjljMDQwOWQ0MzEiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfYmFmM2Q2ZDRiZjE5NDY2MTkxYzU5MDc2MjRjY2U0NDcubTRhLzE4MTE4MjA4NS5tcDMifV1dfQ.09cougLbMQ8Z5cSF7tCkfIevTVniRY0_9MrXpn0Jz0U&filename=group+h+-+press+space+bar+to+deal+again.mp3')
+press_f_sound = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_61baadfd7314462e9ac093f4d9998bcc.m4a/181182101.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MjA5MiwiZXhwIjoxNjIxNDQxMzAyLCJqdGkiOiJiZjg1YjgyZGEyOTMiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfNjFiYWFkZmQ3MzE0NDYyZTlhYzA5M2Y0ZDk5OThiY2MubTRhLzE4MTE4MjEwMS5tcDMifV1dfQ.7W33G19HTUNEEOghLxfC4y7_Jq6dXWGOssn8La1mxmY&filename=group+h+-+press+f+to+hit.mp3')
+press_j_sound = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_0149a995fd2f477a8bf40c2baa4a9d42.m4a/181182114.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MjEwNCwiZXhwIjoxNjIxNDQxMzE0LCJqdGkiOiIyMjg3MmZiNWU3NjYiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfMDE0OWE5OTVmZDJmNDc3YThiZjQwYzJiYWE0YTlkNDIubTRhLzE4MTE4MjExNC5tcDMifV1dfQ.WWtxLuDo-ZIM9GBwv74z_8ycBfTVQpRA1NUJeg8EVJo&filename=group+h+-+press+j+to+stand.mp3')
+dealer_busted_sound = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_95356f26e0db4c7e9a7772594be0f6b6.m4a/181182132.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MjEyMywiZXhwIjoxNjIxNDQxMzMzLCJqdGkiOiI2ZjBhZTAzYzk5ODEiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfOTUzNTZmMjZlMGRiNGM3ZTlhNzc3MjU5NGJlMGY2YjYubTRhLzE4MTE4MjEzMi5tcDMifV1dfQ.OugC0wa-j6lI97ZBe8rOxtkEd39IWJLJZZzqkQwqrHs&filename=group+h+-+the+dealer+has+busted.mp3')
+dealer_wins_sound = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_eef9f69d15f8490796abf4e9b05014cb.m4a/181182145.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MjEzNiwiZXhwIjoxNjIxNDQxMzQ2LCJqdGkiOiI4ZTc3MmM3MmEwMGUiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfZWVmOWY2OWQxNWY4NDkwNzk2YWJmNGU5YjA1MDE0Y2IubTRhLzE4MTE4MjE0NS5tcDMifV1dfQ.eKPAPg1RS7_JYugTWtUAC-7eJktQaWaLZCVfm6BXh94&filename=group+h+-+the+dealer+wins.mp3')
+dealer_total_is_sound = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_dbd9452c53c241a8afa1674fb8492c06.m4a/181182161.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MjE1MiwiZXhwIjoxNjIxNDQxMzYyLCJqdGkiOiJjYzYzNDFmN2M4OWUiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfZGJkOTQ1MmM1M2MyNDFhOGFmYTE2NzRmYjg0OTJjMDYubTRhLzE4MTE4MjE2MS5tcDMifV1dfQ.9PDxsIKvnujYJyxdQanf1IRLm0I_jXzvGzDcBH19_MQ&filename=group+h+-+the+dealers+total+is.mp3')
+player_busted_sound = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_d3aaec8cbc8d41a286b44f7a8da6b1dc.m4a/181182175.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MjE2NiwiZXhwIjoxNjIxNDQxMzc2LCJqdGkiOiJmYmNlN2RiYmY4NmUiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfZDNhYWVjOGNiYzhkNDFhMjg2YjQ0ZjdhOGRhNmIxZGMubTRhLzE4MTE4MjE3NS5tcDMifV1dfQ.wFTzkiAa0HsuI-tDnFXiEflCd4pV0kBoh5h1m1yv5e0&filename=group+h+-+you+have+busted.mp3')
+player_wins_sound = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_0a5dcc2aa96a431c8a8a52c058258f4d.m4a/181182187.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MjE3NywiZXhwIjoxNjIxNDQxMzg3LCJqdGkiOiJhNjI3ZWRkNDM5ZDkiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfMGE1ZGNjMmFhOTZhNDMxYzhhOGE1MmMwNTgyNThmNGQubTRhLzE4MTE4MjE4Ny5tcDMifV1dfQ.vSCtnrQeAD58NaVW5yZfHYdt03G3NXpbLY9A43P5dTc&filename=group+h+-+you+win.mp3')
+player_total_is_sound= simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_c07175e54e444cbd8dcc5b5fc447b848.m4a/181182201.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MjE5MiwiZXhwIjoxNjIxNDQxNDAyLCJqdGkiOiI2YWMzMmRlZDVlNDkiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfYzA3MTc1ZTU0ZTQ0NGNiZDhkY2M1YjVmYzQ0N2I4NDgubTRhLzE4MTE4MjIwMS5tcDMifV1dfQ.ky8vrcgZ-ZOPqyeZoXuOJiW9t57qEwZBqVsRs4VoPOY&filename=group+h+-+your+total+is.mp3')
+
+# define card class
+class Card:
+    def __init__(self, suit, rank):
+        if (suit in SUITS) and (rank in RANKS):
+            self.suit = suit
+            self.rank = rank
+        else:
+            self.suit = None
+            self.rank = None
+            print ("Invalid card: ", suit, rank)
+
+    def __str__(self):
+        return self.suit + self.rank
+
+    def get_suit(self):
+        return self.suit
+
+    def get_rank(self):
+        return self.rank
+
+    def draw(self, canvas, pos):
+        card_loc = (CARD_CENTER[0] + CARD_SIZE[0] * RANKS.index(self.rank), 
+                    CARD_CENTER[1] + CARD_SIZE[1] * SUITS.index(self.suit))
+        if layout == "draw_complex":
+            canvas.draw_image(complex_images, card_loc, CARD_SIZE, [pos[0] + CARD_CENTER[0], pos[1] + CARD_CENTER[1]], CARD_SIZE)
+        else:
+            canvas.draw_image(card_images, card_loc, CARD_SIZE, [pos[0] + CARD_CENTER[0], pos[1] + CARD_CENTER[1]], CARD_SIZE)
+       
+# define hand class
+class Hand:
+    def __init__(self, is_dealer=False):
+        self.total = 0
+        assert isinstance(is_dealer, bool), type(is_dealer)
+
+        self._is_dealer = is_dealer
+        self.hand_list = []
+
+    def __str__(self):
+        ans = ""
+        for i in range(len(self.hand_list)):
+            ans += str(self.hand_list[i])
+            ans += " "
+        return "Hand contains " + ans # return a string representation of a hand
+        
+    def add_card(self, card):
+        self.hand_list.append(card)
+        
+    def get_value(self):
+        # count aces as 1, if the hand has an ace, then add 10 to hand value if it doesn't bust
+        has_ace = 0
+        self.total = 0
+        for card in self.hand_list:
+            self.total +=  VALUES[card.get_rank()]        
+            if (card.get_rank() == "A" and self.total + 10 <= 21):
+                has_ace += 1
+                self.total += 10
+            if (self.total > 21 and has_ace > 0):
+                has_ace -= 1
+                self.total -= 10
+        return self.total
+   
+    def draw(self, canvas, pos):
+        # draw a hand on the canvas, use the draw method for cards
+        distance = 78
+        for card in self.hand_list:
+            card.draw(canvas, pos)
+            pos[0] += distance        
+        
+# define deck class 
+class Deck:    
+    def __init__(self):
+        self.deck_list = []
+        for j in SUITS:
+            for i in RANKS:
+                card = Card(j,i)
+                self.deck_list.append(card)
+
+    def shuffle(self):        
+        random.shuffle(self.deck_list)
+
+    def deal_card(self):
+        serve_card = random.choice(self.deck_list)
+        self.deck_list.remove(serve_card)
+        return serve_card
+    
+    def __str__(self):
+        deck = ""
+        for card in self.deck_list:
+            deck += str(card) 
+            deck += " "
+        return deck
+
+#The actions that happen on a deal    
+def deal():
+    global outcome, in_play, player_h, dealer_h, deck, house_score, player_score, Game_Number, audio, volume, t
+    
+    deck = Deck()
+    deck.shuffle()
+    
+    player_h = Hand()
+    dealer_h = Hand()
+    
+    player_h.add_card(deck.deal_card())
+    player_h.add_card(deck.deal_card())
+    
+    dealer_h.add_card(deck.deal_card())
+    dealer_h.add_card(deck.deal_card())
+    
+    print ("Player", player_h)
+    print ("Dealer", dealer_h)
+    
+    player_h.get_value()
+    dealer_h.get_value()
+    
+    sound_text_player = "snd_"+ str(player_h.total)
+    sound_text_dealer = "snd_"+ str(dealer_h.total)
+    
+    outcome = ""
+    Game_Number += 1
+    if audio == True:
+        start_sound.set_volume(volume)
+        start_sound.play()
+    elif audio == False:
+                player_total_is_sound.set_volume(volume)
+                player_total_is_sound.play()
+                wait(10000000)
+                audio_choose(player_h.total)
+                wait(10000000)
+                press_f_sound.set_volume(volume)
+                press_f_sound.play()
+                wait(10000000)
+                press_j_sound.set_volume(volume)
+                press_j_sound.play()   
+
+    if (in_play):
+        house_score += 1
+        scatter_add_data()
+        print ("The player quits, so loses the round")
+        if audio == True:
+                lose_sound.set_volume(volume*0.1)
+                lose_sound.play()
+        elif audio == False:
+                player_total_is_sound.set_volume(volume)
+                player_total_is_sound.play()
+                wait(10000000)
+                audio_choose(player_h.total)
+                wait(10000000)
+                press_f_sound.set_volume(volume)
+                press_f_sound.play()
+                wait(10000000)
+                press_j_sound.set_volume(volume)
+                press_j_sound.play()
+    
+    in_play = True
+    #starting the countdown timer
+    timer.stop()
+    display = "2:00.0"
+    t = 1200 
+    timer.start()
+       
+# the actions that are completed when the button hit is selected
+def hit():
+    global in_play, house_score, player_score, outcome
+    # if the hand is in play, hit the player
+    outcome = ""
+    
+    if (in_play):
+        
+         card_placing_sound.set_volume(volume)
+         card_placing_sound.play()
+         player_h.add_card(deck.deal_card())
+         player_h.get_value()
+
+         if (player_h.total > 21):
+            if audio == True:
+                lose_sound.set_volume(volume*0.1)
+                lose_sound.play()
+            elif audio == False:
+                player_busted_sound.set_volume(volume)
+                player_busted_sound.play()
+                wait(10000000)
+                player_total_is_sound.set_volume(volume)
+                player_total_is_sound.play()
+                wait(10000000)
+                audio_choose(player_h.total)
+                wait(10000000)
+                press_space_sound.set_volume(volume)
+                press_space_sound.play()
+                            
+            print ("You have busted")
+            in_play = False
+            outcome = "YOU HAVE BUSTED"
+            house_score += 1
+            scatter_add_data()
+            
+         else:
+            if audio == True:
+                card_placing_sound.set_volume(volume)
+                card_placing_sound.play()
+            elif audio == False:
+                player_total_is_sound.set_volume(volume)
+                player_total_is_sound.play()
+                wait(10000000)
+                audio_choose(player_h.total)
+                wait(10000000)
+                press_f_sound.set_volume(volume)
+                press_f_sound.play()
+                wait(10000000)
+                press_j_sound.set_volume(volume)
+                press_j_sound.play()
+                wait(10000000)
+                press_space_sound.set_volume(volume)
+                press_space_sound.play()
+                
+# the actions that are completed when the stand button is selected.            
+def stand():
+    global in_play, house_score, player_score, outcome, audio   
+    outcome = ""   
+    if (not in_play):
+        print ("You have busted")        
+        pass    
+    else:    
+        print ("You stand")
+        in_play = False
+        
+        while (dealer_h.total < 17):
+            dealer_h.add_card(deck.deal_card())
+            print ("Dealer", dealer_h)
+            dealer_h.get_value()
+        print ("Player's sum", player_h.total)
+        print ("Dealer's sum", dealer_h.total)
+        
+        if (dealer_h.total > 21):
+            if audio == True:
+                win_sound.set_volume(volume)
+                win_sound.play()
+            elif audio == False:
+                dealer_busted_sound.set_volume(volume)
+                dealer_busted_sound.play()
+                wait(10000000)
+                dealer_total_is_sound.set_volume(volume)
+                dealer_total_is_sound.play()
+                wait(10000000)
+                audio_choose(dealer_h.total)
+                wait(10000000)
+                player_total_is_sound.set_volume(volume)
+                player_total_is_sound.play()
+                wait(10000000)
+                audio_choose(player_h.total)
+                wait(10000000)
+                press_space_sound.set_volume(volume)
+                press_space_sound.play()
+            print ("Dealer has bust and you win")
+            player_score += 1
+            scatter_add_data()
+            outcome = "DEALER BUSTED"            
+        
+        elif (dealer_h.total > player_h.total):
+            if audio == True:
+                lose_sound.set_volume(volume*0.1)
+                lose_sound.play()
+            elif audio == False:
+                dealer_wins_sound.set_volume(volume)
+                dealer_wins_sound.play()
+                wait(10000000)
+                dealer_total_is_sound.set_volume(volume)
+                dealer_total_is_sound.play()
+                wait(10000000)
+                audio_choose(dealer_h.total)
+                wait(10000000)
+                player_total_is_sound.set_volume(volume)
+                player_total_is_sound.play()
+                wait(10000000)
+                audio_choose(player_h.total)
+                wait(10000000)
+                press_space_sound.set_volume(volume)
+                press_space_sound.play()
+
+            print ("Dealer wins")
+            house_score += 1
+            scatter_add_data()
+            outcome = "DEALER WINS"
+        
+        elif (dealer_h.total == player_h.total):
+            if audio == True:
+                lose_sound.set_volume(volume*0.1)
+                lose_sound.play()
+            elif audio == False:
+                tie.set_volume(volume)
+                tie.play()
+                wait(10000000)
+                dealer_wins_sound.set_volume(volume)
+                dealer_wins_sound.play()
+                wait(10000000)
+                player_total_is_sound.set_volume(volume)
+                player_total_is_sound.play()
+                wait(10000000)
+                audio_choose(player_h.total)
+                wait(10000000)
+                press_space_sound.set_volume(volume)
+                press_space_sound.play()
+            print ("Dealer wins")
+            house_score += 1
+            scatter_add_data()
+            outcome = "TIE: DEALER WINS"
+        
+        else:
+            if audio == True:	
+                win_sound.set_volume(volume)
+                win_sound.play()
+            elif audio == False:
+                player_wins_sound.set_volume(volume)
+                player_wins_sound.play()
+                wait(10000000)
+                player_total_is_sound.set_volume(volume)
+                player_total_is_sound.play()
+                wait(10000000)
+                audio_choose(player_h.total)
+                wait(10000000)
+                press_space_sound.set_volume(volume)
+                press_space_sound.play()
+            print ("You win")
+            player_score += 1
+            scatter_add_data()
+            outcome = "YOU WIN!"
+
+#handles button clicks for different layouts
+def mouse_handler(position):  
+    global layout, old_layout
+    if layout == "Menu":
+        #Settings button
+        if position[0]<400 + (frame.get_canvas_textwidth('SETTINGS', FONT_SIZE)/2)+5 and position[0]>400 - (frame.get_canvas_textwidth('SETTINGS', FONT_SIZE)/2)-5 and position[1]>150-FONT_SIZE and position[1]<150:
+            frame.set_draw_handler(settings)
+        #switch layout button
+        if position[0]<400 + (frame.get_canvas_textwidth('SWITCH LAYOUT', FONT_SIZE)/2)+5 and position[0]>400 - (frame.get_canvas_textwidth('SWITCH LAYOUT', FONT_SIZE)/2)-5 and position[1]>250-FONT_SIZE and position[1]<250:
+            layout = old_layout
+            Switch_layout()
+        #scatter plot button
+        if position[0]<400 + (frame.get_canvas_textwidth('SCATTER PLOT', FONT_SIZE)/2)+5 and position[0]>400 - (frame.get_canvas_textwidth('SCATTER PLOT', FONT_SIZE)/2)-5 and position[1]>350-FONT_SIZE and position[1]<350:
+            scatter_plot()
+        #back button
+        if position[0]<400 + (frame.get_canvas_textwidth('BACK', FONT_SIZE)/2)+5 and position[0]>400 - (frame.get_canvas_textwidth('BACK', FONT_SIZE)/2)-5 and position[1]>500-FONT_SIZE and position[1]<500:
+            Switch_layout()
+   
+    if layout == "settings":
+        #volume up
+        if position[0]<55+frame.get_canvas_textwidth('VOLUME UP', FONT_SIZE*4/5 )+10 and position[0]>55 and position[1]>(150-FONT_SIZE) and position[1]<150:
+            Volume_up()
+        #volume down
+        if position[0]<55+frame.get_canvas_textwidth('VOLUME DOWN', FONT_SIZE*4/5 )+10 and position[0]>55 and position[1]>250-FONT_SIZE and position[1]<250:
+            Volume_Down()
+        #Mute Volume
+        if position[0]<55+frame.get_canvas_textwidth('MUTE VOLUME', FONT_SIZE*4/5 )+10 and position[0]>55 and position[1]>350-FONT_SIZE and position[1]<350:
+            Mute_Volume()
+        #back button
+        if position[0]<400 + (frame.get_canvas_textwidth('BACK', FONT_SIZE)/2)+5 and position[0]>400 - (frame.get_canvas_textwidth('BACK', FONT_SIZE)/2)-5 and position[1]>500-FONT_SIZE and position[1]<500:
+            Switch_layout()
+        #increase font
+        if position[0]<305+frame.get_canvas_textwidth('INCREASE FONT', FONT_SIZE*4/5 )+10 and position[0]>305 and position[1]>150-FONT_SIZE and position[1]<150:
+            Increase_Font()
+        #decrease font
+        if position[0]<305+frame.get_canvas_textwidth('DECREASE FONT', FONT_SIZE*4/5 )+10 and position[0]>305 and position[1]>250-FONT_SIZE and position[1]<250:
+            Decrease_Font()
+        #audio assist toggle
+        if position[0]<305+frame.get_canvas_textwidth('AUDIO ASSIST ON/OFF', FONT_SIZE*4/5 )+10 and position[0]>305 and position[1]>350-FONT_SIZE and position[1]<350:
+            audio_assist_toggle()
+           
+    if layout == "draw_simple":
+        #Menu button
+        if position[0]<790 and position[0]>680 and position[1]>0 and position[1]<50:
+            frame.set_draw_handler(Menu)
+        #hit button
+        if position[0]<310 and position[0]>180 and position[1]>530 and position[1]<570:
+            hit()
+        #stand button
+        elif position[0]<465 and position[0]>335 and position[1]>530 and position[1]<570:
+            stand()
+        #deal button
+        elif position[0]<615 and position[0]>485 and position[1]>530 and position[1]<570:
+            deal()
+         #START OVER button
+        elif position[0]<(FRAME_WIDTH - 25) and position[0]>(FRAME_WIDTH - frame.get_canvas_textwidth('START OVER', FONT_SIZE) - 25) and position[1]>25 + 2*(FONT_SIZE * 3 / 4.0) - FONT_SIZE and position[1]<25 + 2*(FONT_SIZE * 3 / 4.0):
+            start_over() 
+                        
+    if layout == "draw_complex":
+        #menu button
+        if position[0]<790 and position[0]>680 and position[1]>25 and position[1]<75:
+            frame.set_draw_handler(Menu)
+        #hit button
+        if position[0]<245 and position[0]>95 and position[1]>210 and position[1]<260:
+            hit()
+        #stand button
+        elif position[0]<245 and position[0]>95 and position[1]>275 and position[1]<325:
+            stand()
+        #deal button
+        elif position[0]<245 and position[0]>95 and position[1]>340 and position[1]<390:
+            deal()
+        #start over button
+        elif position[0]<475 and position[0]>325 and position[1]>520 and position[1]<585:
+            start_over()
+
+#Choses the correct audio to play
+def audio_choose(score):
+    global snd, volume, player_h, dealer_h
+    print(player_h, dealer_h)
+    if (score) == 2:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_18f2875a7ee1476a8c535044e4846ca2.m4a/181255152.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTI1NTE0MiwiZXhwIjoxNjIxNTE0MzUyLCJqdGkiOiJmMjc3YmUwNWM2NmIiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfMThmMjg3NWE3ZWUxNDc2YThjNTM1MDQ0ZTQ4NDZjYTIubTRhLzE4MTI1NTE1Mi5tcDMifV1dfQ.y9C1yadI35UH8NX7RsGjirLvNH9V3RVYPSxOQLqUf2U&filename=group+h+-+2.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 3:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_03fa8f5613904972b9026628d3bdde64.m4a/181255136.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTI1NTEyNywiZXhwIjoxNjIxNTE0MzM3LCJqdGkiOiI3ZjRkYjU1ZTYwNWMiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfMDNmYThmNTYxMzkwNDk3MmI5MDI2NjI4ZDNiZGRlNjQubTRhLzE4MTI1NTEzNi5tcDMifV1dfQ.WypOPIng9aMO0-Dep6z_quwaPxci2OWQcw71AK7rN5U&filename=group+h+-+3.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 4:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_3b0e823460844767bf8c010278aa8381.m4a/181255118.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTI1NTEwOSwiZXhwIjoxNjIxNTE0MzE5LCJqdGkiOiI0ZDhhZjdiZDQxZDgiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfM2IwZTgyMzQ2MDg0NDc2N2JmOGMwMTAyNzhhYTgzODEubTRhLzE4MTI1NTExOC5tcDMifV1dfQ.GdkqjQlnBrSEQ7G4sTSCRayN7HUBVDPksbM2G8aLumo&filename=group+h+-+4.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 5:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_62f12e2ecdf14b6590761c1955e4df0e.m4a/181255101.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTI1NTA5MiwiZXhwIjoxNjIxNTE0MzAyLCJqdGkiOiJmMGI5MWNmNDc3ZWMiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfNjJmMTJlMmVjZGYxNGI2NTkwNzYxYzE5NTVlNGRmMGUubTRhLzE4MTI1NTEwMS5tcDMifV1dfQ.tzkknvJkVi4b13Jsnv_rF87EFQX8qZSDS2qn4hEvnlw&filename=group+h+-+5.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 6:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_f2bd68ea5409441594373a3fe73967d1.m4a/181255078.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTI1NTA2OSwiZXhwIjoxNjIxNTE0Mjc5LCJqdGkiOiI4ZTA0ZGM4ZWU2NjMiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfZjJiZDY4ZWE1NDA5NDQxNTk0MzczYTNmZTczOTY3ZDEubTRhLzE4MTI1NTA3OC5tcDMifV1dfQ.TUJ7fIKm0t6iIMISI4pESw9yAY1eR5srMfcvM88FRIs&filename=group+h+-+6.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 7:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_3fdfab0fe38f4297a5077005b7e45483.m4a/181255062.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTI1NTA1MiwiZXhwIjoxNjIxNTE0MjYyLCJqdGkiOiI1ODViOGRkN2U4ODciLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfM2ZkZmFiMGZlMzhmNDI5N2E1MDc3MDA1YjdlNDU0ODMubTRhLzE4MTI1NTA2Mi5tcDMifV1dfQ.s8JzOD6nXHTL56Ji9YcLeZ1LqjHhi7aH8ZEHk4sKcUU&filename=group+h+-+7.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 8:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_107bab6dba31415e87829f5f2ed49b28.m4a/181255040.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTI1NTAzMCwiZXhwIjoxNjIxNTE0MjQwLCJqdGkiOiJjY2IxMzdiMDAxMTUiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfMTA3YmFiNmRiYTMxNDE1ZTg3ODI5ZjVmMmVkNDliMjgubTRhLzE4MTI1NTA0MC5tcDMifV1dfQ.698HrCD8ecglkvUpMSJarwDzNrzML_tCD4HT0DKYCQw&filename=group+h+-+8.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 9:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_25e9373ad1ed43ebb980fabccb97a70b.m4a/181255023.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTI1NTAxNCwiZXhwIjoxNjIxNTE0MjI0LCJqdGkiOiJmMDRlZTc2Zjg2ZjIiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfMjVlOTM3M2FkMWVkNDNlYmI5ODBmYWJjY2I5N2E3MGIubTRhLzE4MTI1NTAyMy5tcDMifV1dfQ.-0BeAGaCoQFdRDtlgGQScFDKuIK-eW-ayiM7ZVquxtE&filename=group+h+-+9.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 10:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_4d9bd81f0ddf4606b94338f55c2347d4.m4a/181255004.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTI1NDk5NSwiZXhwIjoxNjIxNTE0MjA1LCJqdGkiOiI3Zjg0MjhmMWZiZDciLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfNGQ5YmQ4MWYwZGRmNDYwNmI5NDMzOGY1NWMyMzQ3ZDQubTRhLzE4MTI1NTAwNC5tcDMifV1dfQ.lTGmWIqy25Ctj_0qwEK8KrMLjQODqDZJG6MPdU3YQ50&filename=group+h+-+10.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 11:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_c365c12410a243f2820663da631cd5f1.m4a/181254980.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTI1NDk3MSwiZXhwIjoxNjIxNTE0MTgxLCJqdGkiOiI3ZDc2OWM5MWVkOGEiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfYzM2NWMxMjQxMGEyNDNmMjgyMDY2M2RhNjMxY2Q1ZjEubTRhLzE4MTI1NDk4MC5tcDMifV1dfQ.K7img0h-jm_36dFKoNwDlcKEoUv93FPt_diycQ3sOfI&filename=group+h+-+11.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 12:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_c21a431a16da4b6fa6b22126e52522b7.m4a/181254954.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTI1NDk0NSwiZXhwIjoxNjIxNTE0MTU1LCJqdGkiOiI4MjllZTNjYjhjOTgiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfYzIxYTQzMWExNmRhNGI2ZmE2YjIyMTI2ZTUyNTIyYjcubTRhLzE4MTI1NDk1NC5tcDMifV1dfQ.KuES5r6Np-6AgbC4dUMfkG6t4xcsJxcuo9j-u64aE6M&filename=group+h+-+12.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 13:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_595e3b4c9677465885c311f1abc9ef03.m4a/181181819.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MTgwOSwiZXhwIjoxNjIxNDQxMDE5LCJqdGkiOiIxMzdhODc3YTNmOTQiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfNTk1ZTNiNGM5Njc3NDY1ODg1YzMxMWYxYWJjOWVmMDMubTRhLzE4MTE4MTgxOS5tcDMifV1dfQ.VOZNfU70PHofgAMtsLf4jOXrj1zmzCuvBbumLdC5wRI&filename=group+h+-+13.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 14:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_ee624cba43394c7f8619d62b80223592.m4a/181181832.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MTgyMywiZXhwIjoxNjIxNDQxMDMzLCJqdGkiOiJlZGE5YTdjMmE2NzUiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfZWU2MjRjYmE0MzM5NGM3Zjg2MTlkNjJiODAyMjM1OTIubTRhLzE4MTE4MTgzMi5tcDMifV1dfQ.ziVncMsK8I2dlFOGEsIQfOi4FaP6O-XjXH90xH8cckY&filename=group+h+-+14.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 15:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_68942b94e1d548119362910f679747c0.m4a/181181846.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MTgzNiwiZXhwIjoxNjIxNDQxMDQ2LCJqdGkiOiI0MDcwNmFlODlmZDQiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfNjg5NDJiOTRlMWQ1NDgxMTkzNjI5MTBmNjc5NzQ3YzAubTRhLzE4MTE4MTg0Ni5tcDMifV1dfQ.9NCUPM7bysxm0er1X79S5IzJqvmF-sUdkCGr_aekMBE&filename=group+h+-+15.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 16:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_4bdfb349f5134729b369539d667a7415.m4a/181181861.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MTg1MiwiZXhwIjoxNjIxNDQxMDYyLCJqdGkiOiI1N2ZmYjQyM2EwMmYiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfNGJkZmIzNDlmNTEzNDcyOWIzNjk1MzlkNjY3YTc0MTUubTRhLzE4MTE4MTg2MS5tcDMifV1dfQ.yLQPrXUpq0qiODsB5kasxPgDx0nTgxCIhDrUSypT5ZE&filename=group+h+-+16.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 17:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_ec00e227655b4ba886ec16c64379a4f7.m4a/181181875.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MTg2NSwiZXhwIjoxNjIxNDQxMDc1LCJqdGkiOiI1YTg5ODAyZjk5MWQiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfZWMwMGUyMjc2NTViNGJhODg2ZWMxNmM2NDM3OWE0ZjcubTRhLzE4MTE4MTg3NS5tcDMifV1dfQ.oioG1iqJPwzehiz85yhbe9atIba_6fDaIoTlJ93tIx4&filename=group+h+-+17.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 18:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_dcab40d0c384436bb01f15e4e47a4eec.m4a/181181887.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MTg3OCwiZXhwIjoxNjIxNDQxMDg4LCJqdGkiOiI0MjJhMTg2ODNlMTQiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfZGNhYjQwZDBjMzg0NDM2YmIwMWYxNWU0ZTQ3YTRlZWMubTRhLzE4MTE4MTg4Ny5tcDMifV1dfQ.YHtk8AOQHMXccXfrivgBdMEMO5SkB2HQOdX4wtCmHMM&filename=group+h+-+18.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 19:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_0d6f841602e84a5b80f696ebe2b4fc83.m4a/181181900.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MTg5MSwiZXhwIjoxNjIxNDQxMTAxLCJqdGkiOiI3OTIyMmZmZGFjOGUiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfMGQ2Zjg0MTYwMmU4NGE1YjgwZjY5NmViZTJiNGZjODMubTRhLzE4MTE4MTkwMC5tcDMifV1dfQ.8eRYDN3qY8RsFvwfDXLSc4w2Igydlt3LnFrLopkYyG4&filename=group+h+-+19.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 20:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_8d0aa0c4de164912b7a87f50d51fade7.m4a/181181911.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MTkwMiwiZXhwIjoxNjIxNDQxMTEyLCJqdGkiOiJlNDZlYzFlNjU3NDAiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfOGQwYWEwYzRkZTE2NDkxMmI3YTg3ZjUwZDUxZmFkZTcubTRhLzE4MTE4MTkxMS5tcDMifV1dfQ.Vx3eTEMRKZop6NLW_xdqwJSUZb_Le_5NsHxZW8rryBI&filename=group+h+-+20.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 21:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_098a2d8c3e8e42e28380acabc3b4ab53.m4a/181181928.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MTkxOSwiZXhwIjoxNjIxNDQxMTI5LCJqdGkiOiI2ZGMwOTk3Y2IzMzAiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfMDk4YTJkOGMzZThlNDJlMjgzODBhY2FiYzNiNGFiNTMubTRhLzE4MTE4MTkyOC5tcDMifV1dfQ.ANg05Yk0CL3GW-tsCp5Qo0BFsZ1QSqir-W7r_XBb_ic&filename=group+h+-+21.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 22:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_9c28da03b7dd4409b8155757c32866e5.m4a/181181945.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MTkzNSwiZXhwIjoxNjIxNDQxMTQ1LCJqdGkiOiJlMzAyMWY0NzNhNGIiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfOWMyOGRhMDNiN2RkNDQwOWI4MTU1NzU3YzMyODY2ZTUubTRhLzE4MTE4MTk0NS5tcDMifV1dfQ._E8UzWrzaIZmLKyUFQRznutYamYHaHg3IbyKIUlmP9A&filename=group+h+-+22.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 23:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_65e154c7eccc4e0a991e3e058185f7bf.m4a/181181979.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MTk2OSwiZXhwIjoxNjIxNDQxMTc5LCJqdGkiOiI2M2ZkNzliMTdjMzQiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfNjVlMTU0YzdlY2NjNGUwYTk5MWUzZTA1ODE4NWY3YmYubTRhLzE4MTE4MTk3OS5tcDMifV1dfQ.UrcU5e5ogpO9D_-mTnVVIzxyC9OPz_TLWS91G0PqvsA&filename=group+h+-+23.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 24:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_c2a0fbf5bffd44449a170b6fe514dd6d.m4a/181181991.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MTk4MSwiZXhwIjoxNjIxNDQxMTkxLCJqdGkiOiJkZjU3NTZlNDgzYTYiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfYzJhMGZiZjViZmZkNDQ0NDlhMTcwYjZmZTUxNGRkNmQubTRhLzE4MTE4MTk5MS5tcDMifV1dfQ.UUg7zJ0c9XRde6OQezzpkxvihxbufTYQZPptqxgi2sY&filename=group+h+-+24.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 25:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_77527e4946354d20b39513ff550b1e54.m4a/181182003.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MTk5NCwiZXhwIjoxNjIxNDQxMjA0LCJqdGkiOiJiMDA0OWEwOTRhYWEiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfNzc1MjdlNDk0NjM1NGQyMGIzOTUxM2ZmNTUwYjFlNTQubTRhLzE4MTE4MjAwMy5tcDMifV1dfQ.BmKnwOfGAIPyD8a3Voap9wAncWzrNND2bqabcYwpbAo&filename=group+h+-+25.mp3')
+        snd.set_volume(volume)
+        snd.play()
+    elif (score) == 26:
+        snd = simplegui.load_sound('https://download-files.wixmp.com/temp/extend/smusic/f781b0_52c3ab2b822647e4a3e7160f9dd26ca1.m4a/181182015.mp3?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ1cm46YXBwOmU2NjYzMGU3MTRmMDQ5MGFhZWExZjE0OWIzYjY5ZTMyIiwic3ViIjoidXJuOmFwcDplNjY2MzBlNzE0ZjA0OTBhYWVhMWYxNDliM2I2OWUzMiIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sImlhdCI6MTYyMTE4MjAwNiwiZXhwIjoxNjIxNDQxMjE2LCJqdGkiOiJmMTM0NWVmYWQ4ZWEiLCJvYmoiOltbeyJwYXRoIjoiL3RlbXAvZXh0ZW5kL3NtdXNpYy9mNzgxYjBfNTJjM2FiMmI4MjI2NDdlNGEzZTcxNjBmOWRkMjZjYTEubTRhLzE4MTE4MjAxNS5tcDMifV1dfQ.pYFvG-fdkt0NnAYkTX9b640iYSp45sdwRMswnNYep88&filename=group+h+-+26.mp3')
+        snd.set_volume(volume)
+        snd.play()
+        
+#assists in the positioning of cards        
+def assert_pos(pos):   
+    assert isinstance(pos, (tuple, list)), type(pos)
+    assert len(pos) > 0, len(pos)
+    assert isinstance(pos[0], (int, float)), type(pos[0])
+    assert pos[0] >= 0, pos
+    assert isinstance(pos[1], (int, float)), type(pos[1])
+    assert pos[1] >= 0, pos   
+    
+#assists with the positioning of lines on the simple GUI          
+def draw_rect(canvas, pos, size, line_width, line_color, fill_color=None):
+    assert_pos(pos)
+    assert_pos(size)
+    assert isinstance(line_width, (int, float)), type(line_width)
+    assert line_width >= 0, line_width
+    assert isinstance(line_color, str), type(str)
+    assert (fill_color is None) or isinstance(fill_color, str), type(str)
+    x0 = pos[0]
+    y0 = pos[1]
+    width = size[0] - 1
+    height = size[1] - 1
+    canvas.draw_polygon(((x0, y0),(x0 + width, y0),(x0 + width, y0 + height),(x0, y0 + height)),line_width, line_color, fill_color)
+
+# formatting the countdown timer
+def formatter(t):
+    global display
+    global position
+    time = str(t)
+    time2 = str(t % 600)
+    time3 = str(t/600)
+    time4 = time3[0]
+    if t < 6000:
+        position = [125, 250]
+        if len(time2) == 3:
+            display = time4 + ":" + time2[0:2] + "." + time2[2]
+        elif len(time2) == 2:
+            display = time4 + ":0" + time2[0] + "." + time2[1]
+        elif len(time2) == 1:
+            display = time4 + ":00." + time2          
+    return display 
+#triggers the restart of the countdown to deal a new hand
+def timer_handler():
+    global t
+    global display
+    t -= 1
+    if t<=0:
+        timer.stop()
+        display = "2:00.0"
+        t = 1200 
+        deal()
+
+#cases the countdown to stop while the instructions are read out       
+def wait(counter):
+    while counter >=0:
+        counter -=1        
+
+#toggle that audio assist on and off
+def audio_assist_toggle():
+    global audio, outcome, aatext
+    if audio == True:
+        audio = False
+        outcome = 'AUDIO ASSIST ON'
+        aatext = 'AUDIO ASSIST ON'
+    else:
+        audio = True
+        outcome = 'AUDIO ASSIST OFF'
+        aatext = 'AUDIO ASSIST OFF'
+   
+#Increases the volume    
+def Volume_up():
+    global volume
+    if volume < 1:
+        volume += 0.2
+#Decreases the volume
+def Volume_Down():
+    global volume
+    if volume > 0.1:
+        volume -= 0.2
+    elif volume <0.1:
+        volume = 0
+#Mutes and unmutes the volume        
+def Mute_Volume():
+    global volume, old_volume
+    if volume !=0:
+        old_volume = volume
+        volume = 0
+    else:
+        volume = old_volume
+        
+#Increases font size        
+def Decrease_Font():
+    global FONT_SIZE
+    if FONT_SIZE > 10:
+        FONT_SIZE -= 5
+#Decreases font size
+def Increase_Font():
+    global FONT_SIZE
+    if FONT_SIZE < 36:
+        FONT_SIZE += 5
+
+#Switches the layout between simple GUI and complex GUI and also deals with the menu and setting screen
+def Switch_layout():
+    global layout
+    if layout == "draw_simple":
+        frame.set_draw_handler(draw_complex)
+        
+    elif layout == "draw_complex":
+        frame.set_draw_handler(draw_simple)
+    
+    elif layout == "Menu":
+        if old_layout == "draw_simple":
+            frame.set_draw_handler(draw_simple)
+        else:
+            frame.set_draw_handler(draw_complex)
+        
+    elif layout == "settings":
+        frame.set_draw_handler(Menu)
+    
+#adds stat to Scatter plot list                     
+def scatter_add_data():
+    global Scatter_plot_number_of_wins, Game_Number
+    Scatter_plot_number_of_wins.append((Game_Number, (player_score-house_score)))
+
+#scatter plot draw
+def scatter_plot():
+    simpleplot.plot_lines("Number of Wins / Number of Games", FRAME_WIDTH, FRAME_HEIGHT, "Number of Games", "Number of Wins", [Scatter_plot_number_of_wins], True)
+
+#toggles background colour on simple layout
+def bckg_toggle():
+    global FONT_COLOUR, BACKGROUND_COLOUR, simpleScene
+    if simpleScene == 1:
+        simpleScene = 2
+        FONT_COLOUR = '#d9dff7'
+        BACKGROUND_COLOUR = '#374ebf'
+        frame.set_canvas_background(BACKGROUND_COLOUR)
+    else:
+        simpleScene = 1
+        FONT_COLOUR = GREEN_LIGHT
+        BACKGROUND_COLOUR = 'GREEN'
+        frame.set_canvas_background(BACKGROUND_COLOUR)
+        
+#Start Over method to restart the game
+def start_over():
+    global house_score, player_score, t, outcome, Scatter_plot_number_of_wins
+    deal()
+    house_score = 0
+    player_score = 0
+    Scatter_plot_number_of_wins = [(0, 0)]
+    t = 1200
+    outcome = "NEW GAME"
+    
+# draw handler for the simple GUI  
+def draw_simple(canvas):
+    global in_play, house_score, player_score, spin_count, spin_countdown, pos, outcome, layout, old_layout
+    old_layout = layout
+    layout = "draw_simple"
+    dealercount = "HAND TOTAL: %i" % dealer_h.get_value()
+    playercount = "HAND TOTAL: %i" % player_h.get_value()
+    
+    draw_rect(canvas, (PLAYER_POS[0] - CARD_SPACE, PLAYER_POS[1] - CARD_SPACE),(CARD_SIZE[0] * 2 + CARD_SPACE * 3,CARD_SIZE[1] + CARD_SPACE * 2),2, GREEN_LIGHT, GREEN_DARK)
+    draw_rect(canvas, (DEALER_POS[0] - CARD_SPACE, DEALER_POS[1] - CARD_SPACE),(CARD_SIZE[0] * 2 + CARD_SPACE * 3,CARD_SIZE[1] + CARD_SPACE * 2),2, GREEN_LIGHT, GREEN_DARK)
+    
+    canvas.draw_text('BLACKJACK', (400 - (frame.get_canvas_textwidth('BLACKJACK', FONT_SIZE)/2), 20 + FONT_SIZE * 3 / 4.0), FONT_SIZE,'Maroon')
+    canvas.draw_text('BLACK', (400 - (frame.get_canvas_textwidth('BLACKJACK', FONT_SIZE)/2), 20 + FONT_SIZE * 3 / 4.0), FONT_SIZE,'Black')
+    
+    y = PLAYER_POS[1] - 70
+    canvas.draw_line((25, y - FONT_SIZE - 10), (310, y - FONT_SIZE - 10), 3, FONT_COLOUR)
+    canvas.draw_line((25, y), (310, y), 3, FONT_COLOUR)
+
+    promptText = ('HIT OR STAND?' if in_play else 'NEW DEAL?')
+    canvas.draw_text(promptText,((167.5 -(frame.get_canvas_textwidth(promptText, FONT_SIZE)/2)),y - FONT_SIZE / 4.0 - 3),FONT_SIZE, FONT_COLOUR)
+    
+    if outcome is not None:
+        canvas.draw_text(outcome,((550 - (frame.get_canvas_textwidth(outcome, FONT_SIZE)/2)),y - FONT_SIZE / 4.0 - 3), FONT_SIZE, 'WHITE')
+    if deck is not None:
+        text = 'SCORE: %d | %d' % (house_score, player_score)
+           
+    dealer_h.draw(canvas, [DEALER_POS[0],100])
+    player_h.draw(canvas, [PLAYER_POS[0],400])
+    if (in_play):
+        canvas.draw_image(card_back, CARD_BACK_CENTER, CARD_BACK_SIZE, [325 + CARD_CENTER[0], 100 + CARD_CENTER[1]], CARD_BACK_SIZE)
+        
+    #game control buttons
+    if (in_play):
+        canvas.draw_polygon([(180,530),(310,530),(310,570),(180,570)],2,FONT_COLOUR)
+        canvas.draw_polygon([(335,530),(465,530),(465,570),(335,570)],2,FONT_COLOUR)
+        canvas.draw_text('HIT',[245-(frame.get_canvas_textwidth('HIT', FONT_SIZE)/2),545+(FONT_SIZE/2)],FONT_SIZE, FONT_COLOUR)
+        canvas.draw_text('STAND',[400-(frame.get_canvas_textwidth('STAND', FONT_SIZE)/2),545+(FONT_SIZE/2)],FONT_SIZE, FONT_COLOUR)
+    canvas.draw_text('DEAL',[550-(frame.get_canvas_textwidth('DEAL', FONT_SIZE)/2),545+(FONT_SIZE/2)],FONT_SIZE, FONT_COLOUR)
+    canvas.draw_polygon([(485,530),(615,530),(615,570),(485,570)],2,FONT_COLOUR)
+    
+    #printing game outputs
+    canvas.draw_text('DEALER', (167.5 - (frame.get_canvas_textwidth('DEALER', FONT_SIZE)/2), 130), FONT_SIZE,FONT_COLOUR)
+    canvas.draw_text('PLAYER', (167.5 - (frame.get_canvas_textwidth('PLAYER', FONT_SIZE)/2), 415), FONT_SIZE,FONT_COLOUR)
+    txt_dealerScore = 'SCORE:   %d' % (house_score)
+    canvas.draw_text(txt_dealerScore, (167.5 - (frame.get_canvas_textwidth(txt_dealerScore, FONT_SIZE)/2), 130 + FONT_SIZE + 5), FONT_SIZE,FONT_COLOUR)
+    txt_playerScore = 'SCORE:   %d' % (player_score)
+    canvas.draw_text(txt_playerScore, (167.5 - (frame.get_canvas_textwidth(txt_playerScore, FONT_SIZE)/2), 415 + FONT_SIZE + 5), FONT_SIZE,FONT_COLOUR)
+    if not in_play:
+        canvas.draw_text(dealercount, (167.5 - (frame.get_canvas_textwidth(dealercount, FONT_SIZE)/2), 130 + 2*(FONT_SIZE + 5)), FONT_SIZE,FONT_COLOUR)
+    canvas.draw_text(playercount, (167.5 - (frame.get_canvas_textwidth(playercount, FONT_SIZE)/2), 415 + 2*(FONT_SIZE + 5)), FONT_SIZE,FONT_COLOUR)
+    
+    # Volume buttons
+    canvas.draw_polyline([(30, (150-volume*90)), (30, 150)], 8, 'Maroon')
+    if volume >0.1:
+        canvas.draw_text('V',[10,70],12, 'Black')
+        canvas.draw_text('O',[10,85],12, 'Black')
+        canvas.draw_text('L',[10,100],12, 'Black')
+        canvas.draw_text('U',[10,115],12, 'Black')
+        canvas.draw_text('M',[10,130],12, 'Black')
+        canvas.draw_text('E',[10,145],12, 'Black')
+    
+    # Menu button
+    canvas.draw_text('MENU',[(FRAME_WIDTH - frame.get_canvas_textwidth('MENU', FONT_SIZE) - 25),20 + FONT_SIZE * 3 / 4.0],FONT_SIZE, 'Maroon')
+    #Start over button
+    canvas.draw_text('START OVER',[(FRAME_WIDTH - frame.get_canvas_textwidth('START OVER', FONT_SIZE) - 25),25 + 2*(FONT_SIZE * 3 / 4.0)],FONT_SIZE, 'Maroon')
+    
+    # countdown displayed
+    if t<100:
+        timer_colour = "Maroon"
+    else:
+        timer_colour = "White"
+    canvas.draw_text(formatter(t), [FRAME_WIDTH-80, FRAME_HEIGHT-10], 30, timer_colour)
+
+# draw handler for the complex GUI 
+def draw_complex(canvas):
+    global in_play, house_score, player_score, spin_count, spin_countdown, pos, outcome, layout, old_layout
+    old_layout = layout
+    layout = "draw_complex"
+    canvas.draw_image(background, BACKGROUND_CENTER, BACKGROUND_SIZE, [0 + BACKGROUND_CENTER[0], 0 + BACKGROUND_CENTER[1]], BACKGROUND_SIZE)
+    dealercount = "HAND TOTAL:   %i" % dealer_h.get_value()
+    playercount = "HAND TOTAL:   %i" % player_h.get_value()
+    
+    draw_rect(canvas, (PLAYER_POS[0] - CARD_SPACE, PLAYER_POS[1] - CARD_SPACE),(CARD_SIZE[0] * 2 + CARD_SPACE * 3,CARD_SIZE[1] + CARD_SPACE * 2),2, 'Silver', 'Gray')
+    draw_rect(canvas, (DEALER_POS[0] - CARD_SPACE, DEALER_POS[1] - CARD_SPACE),(CARD_SIZE[0] * 2 + CARD_SPACE * 3,CARD_SIZE[1] + CARD_SPACE * 2),2, 'Silver', 'Gray')
+
+    promptText = ('HIT OR STAND?' if in_play else 'NEW DEAL?')
+    canvas.draw_text(promptText, (400 - (frame.get_canvas_textwidth(promptText, 16)/2),305),16, 'Silver', 'sans-serif')
+
+    if outcome is not None:
+        canvas.draw_text(outcome,(520,305),16, 'Silver', 'sans-serif')
+    if deck is not None:
+        txt_dealerScore = 'SCORE:   %d' % (house_score)
+        canvas.draw_text(txt_dealerScore, (400 - (frame.get_canvas_textwidth(txt_dealerScore, 14)/2),260), 14, 'Silver', 'sans-serif')
+        txt_playerScore = 'SCORE:   %d' % (player_score)
+        canvas.draw_text(txt_playerScore, (400 - (frame.get_canvas_textwidth(txt_playerScore, 14)/2),355), 14, 'Silver', 'sans-serif')
+       
+    dealer_h.draw(canvas, [DEALER_POS[0],100])
+    player_h.draw(canvas, [PLAYER_POS[0],400])
+    if (in_play):
+        canvas.draw_image(complex_back, CARD_BACK_CENTER, CARD_BACK_SIZE, [325 + CARD_CENTER[0], 100 + CARD_CENTER[1]], CARD_BACK_SIZE)
+        canvas.draw_image(btn_hit, (150 / 2, 50 / 2), (150, 50), (170, 235), (150, 50))
+        canvas.draw_image(btn_stand, (150 / 2, 50 / 2), (150, 50), (170, 300), (150, 50))
+    canvas.draw_image(btn_deal, (150 / 2, 50 / 2), (150, 50), (170, 365), (150, 50))
+    canvas.draw_image(btn_startOver, (150 / 2, 65 / 2), (150, 65), (400, 550), (150, 65))
+    canvas.draw_image(btn_menu2, (50 / 2, 50 / 2), (50, 50), (720, 50), (50, 50))
+    canvas.draw_image(outcomeContainer, (200 / 2, 170 / 2), (200, 170), (400, 300), (200, 170))
+    
+    
+    canvas.draw_text('DEALER', (400 - (frame.get_canvas_textwidth('DEALER', 14)/2),233), 14, 'Silver', 'sans-serif')
+    canvas.draw_text('PLAYER', (400 - (frame.get_canvas_textwidth('PLAYER', 14)/2),330), 14, 'Silver', 'sans-serif')
+    if not in_play:
+        canvas.draw_text(dealercount, (400 - (frame.get_canvas_textwidth(dealercount, 14)/2),280), 14, 'Silver', 'sans-serif')
+    canvas.draw_text(playercount, (400 - (frame.get_canvas_textwidth(playercount, 14)/2),374), 14, 'Silver', 'sans-serif')
+    
+    # countdown displayed
+    if t<100:
+        timer_colour = "Red"
+    else:
+        timer_colour = "White"
+    canvas.draw_text(formatter(t), [FRAME_WIDTH-80, FRAME_HEIGHT-10], 30, timer_colour)
+
+    # Volume button
+    canvas.draw_polyline([(30, (100-volume*90)), (30, 100)], 8, 'Red')
+    if volume >0.1:
+        canvas.draw_text('V',[10,25],12, 'White')
+        canvas.draw_text('O',[10,40],12, 'White')
+        canvas.draw_text('L',[10,55],12, 'White')
+        canvas.draw_text('U',[10,70],12, 'White')
+        canvas.draw_text('M',[10,85],12, 'White')
+        canvas.draw_text('E',[10,100],12, 'White')
+    
+# draw handler for the Menu GUI    
+def Menu(canvas):
+    global in_play, house_score, player_score, spin_count, spin_countdown, pos, outcome, layout
+    layout = "Menu"
+       
+    canvas.draw_text('BLACKJACK', (20, 20 + FONT_SIZE * 3 / 4.0), FONT_SIZE,'Maroon')
+    canvas.draw_text('BLACK', (20, 20 + FONT_SIZE * 3 / 4.0), FONT_SIZE,'Black')
+    canvas.draw_text('Menu', (FRAME_WIDTH/2-FONT_SIZE, 20 + FONT_SIZE * 3 / 4.0), FONT_SIZE,'White')
+    canvas.draw_text('SETTINGS',[400 - (frame.get_canvas_textwidth('SETTINGS', FONT_SIZE)/2),150],FONT_SIZE, FONT_COLOUR)
+    draw_rect(canvas, (400 - (frame.get_canvas_textwidth('SETTINGS', FONT_SIZE)/2)-5,150-FONT_SIZE), ((frame.get_canvas_textwidth('SETTINGS', FONT_SIZE)+10,FONT_SIZE+10)), 1, FONT_COLOUR, fill_color=None)
+    canvas.draw_text('SWITCH LAYOUT',[400 - (frame.get_canvas_textwidth('SWITCH LAYOUT', FONT_SIZE)/2),250],FONT_SIZE, FONT_COLOUR)
+    draw_rect(canvas, (400 - (frame.get_canvas_textwidth('SWITCH LAYOUT', FONT_SIZE)/2)-5,250-FONT_SIZE), ((frame.get_canvas_textwidth('SWITCH LAYOUT', FONT_SIZE)+10,FONT_SIZE+10)), 1, FONT_COLOUR, fill_color=None)
+    canvas.draw_text('SCATTER PLOT',[400 - (frame.get_canvas_textwidth('SCATTER PLOT', FONT_SIZE)/2),350],FONT_SIZE, FONT_COLOUR)
+    draw_rect(canvas, (400 - (frame.get_canvas_textwidth('SCATTER PLOT', FONT_SIZE)/2)-5,350-FONT_SIZE), ((frame.get_canvas_textwidth('SCATTER PLOT', FONT_SIZE)+10,FONT_SIZE+10)), 1, FONT_COLOUR, fill_color=None)
+    canvas.draw_text('BACK',[400 - (frame.get_canvas_textwidth('BACK', 20)/2),500],20, 'Black')
+    draw_rect(canvas, (400 - (frame.get_canvas_textwidth('BACK', FONT_SIZE)/2)-5,500-FONT_SIZE), ((frame.get_canvas_textwidth('BACK', FONT_SIZE)+10,FONT_SIZE+10)), 1, 'Black', fill_color=None)
+
+# Volume button
+    canvas.draw_polyline([(30, (150-volume*90)), (30, 150)], 8, 'Maroon')
+    if volume >0.1:
+        canvas.draw_text('V',[10,70],12, 'Black')
+        canvas.draw_text('O',[10,85],12, 'Black')
+        canvas.draw_text('L',[10,100],12, 'Black')
+        canvas.draw_text('U',[10,115],12, 'Black')
+        canvas.draw_text('M',[10,130],12, 'Black')
+        canvas.draw_text('E',[10,145],12, 'Black')
+
+# draw handler for the settings GUI         
+def settings(canvas):
+    global in_play, house_score, player_score, spin_count, spin_countdown, pos, outcome, layout, aatext
+    layout = "settings"
+    
+    canvas.draw_text('BLACKJACK', (20, 20 + FONT_SIZE * 3 / 4.0), FONT_SIZE,'Maroon')
+    canvas.draw_text('BLACK', (20, 20 + FONT_SIZE * 3 / 4.0), FONT_SIZE,'Black')
+    canvas.draw_text('Settings', (FRAME_WIDTH/2-FONT_SIZE, 20 + FONT_SIZE * 3 / 4.0), FONT_SIZE,'White')
+    canvas.draw_text('VOLUME UP',[60,150], FONT_SIZE *4/5, FONT_COLOUR)
+    draw_rect(canvas, (60-5,150-FONT_SIZE), ((frame.get_canvas_textwidth('VOLUME UP', FONT_SIZE*4/5 )+10,FONT_SIZE+10)), 1, FONT_COLOUR, fill_color=None)
+    canvas.draw_text('VOLUME DOWN',[60,250],FONT_SIZE*4/5, FONT_COLOUR)
+    draw_rect(canvas, (60-5,250-FONT_SIZE), ((frame.get_canvas_textwidth('VOLUME DOWN', FONT_SIZE*4/5 )+10,FONT_SIZE+10)), 1, FONT_COLOUR, fill_color=None)
+    canvas.draw_text('MUTE VOLUME',[60,350],FONT_SIZE*4/5, FONT_COLOUR)
+    draw_rect(canvas, (60-5,350-FONT_SIZE), ((frame.get_canvas_textwidth('MUTE VOLUME', FONT_SIZE*4/5 )+10,FONT_SIZE+10)), 1, FONT_COLOUR, fill_color=None)
+    canvas.draw_text('INCREASE FONT',[400,150], FONT_SIZE*4/5, FONT_COLOUR)
+    draw_rect(canvas, (400-5,150-FONT_SIZE), ((frame.get_canvas_textwidth('INCREASE FONT', FONT_SIZE*4/5 )+10,FONT_SIZE+10)), 1, FONT_COLOUR, fill_color=None)
+    canvas.draw_text('DECREASE FONT',[400,250],FONT_SIZE*4/5, FONT_COLOUR)
+    draw_rect(canvas, (400-5,250-FONT_SIZE), ((frame.get_canvas_textwidth('DECREASE FONT', FONT_SIZE*4/5 )+10,FONT_SIZE+10)), 1, FONT_COLOUR, fill_color=None)
+    if audio == True:
+        aatext = 'AUDIO ASSIST ON'
+    else:
+        aatext = 'AUDIO ASSIST OFF'
+    canvas.draw_text(aatext,[400,350],FONT_SIZE*4/5, FONT_COLOUR)
+    draw_rect(canvas, (400-5,350-FONT_SIZE), ((frame.get_canvas_textwidth(aatext, FONT_SIZE*4/5 )+10,FONT_SIZE+10)), 1, FONT_COLOUR, fill_color=None)
+    canvas.draw_text('BACK',[400 - (frame.get_canvas_textwidth('BACK', 20)/2),500],20, 'Black')
+    draw_rect(canvas, (400 - (frame.get_canvas_textwidth('BACK', FONT_SIZE)/2)-5,500-FONT_SIZE), ((frame.get_canvas_textwidth('BACK', FONT_SIZE)+10,FONT_SIZE+10)), 1, 'Black', fill_color=None)
+
+    
+    # Volume button
+    canvas.draw_polyline([(30, (150-volume*90)), (30, 150)], 8, 'Maroon')
+    if volume >0.1:
+        canvas.draw_text('V',[10,70],12, 'Black')
+        canvas.draw_text('O',[10,85],12, 'Black')
+        canvas.draw_text('L',[10,100],12, 'Black')
+        canvas.draw_text('U',[10,115],12, 'Black')
+        canvas.draw_text('M',[10,130],12, 'Black')
+        canvas.draw_text('E',[10,145],12, 'Black')       
+
+#Short-cut keys
+def keyboardShortCuts(key):
+    if (key == simplegui.KEY_MAP["f"]):
+        hit()
+    elif (key == simplegui.KEY_MAP["j"]):
+        stand()
+    elif (key == simplegui.KEY_MAP["space"]):
+        deal()
+    elif (key == simplegui.KEY_MAP["up"]):
+        Volume_up()    
+    elif (key == simplegui.KEY_MAP["down"]):
+        Volume_Down()   
+    elif (key == simplegui.KEY_MAP["k"]):
+        Mute_Volume()
+    elif (key == simplegui.KEY_MAP["d"]):
+        frame.stop()
+    elif (key == simplegui.KEY_MAP["x"]):
+        Decrease_Font()
+    elif (key == simplegui.KEY_MAP["z"]):
+        Increase_Font()
+    elif (key == simplegui.KEY_MAP["r"]):
+        start_over()
+    elif (key == simplegui.KEY_MAP["b"]):
+        if layout == "Menu":
+            Switch_layout()
+        else:
+            frame.set_draw_handler(Menu) 
+    
+# initialization frame
+frame = simplegui.create_frame("Blackjack", FRAME_WIDTH, FRAME_HEIGHT, 200)
+frame.set_canvas_background(BACKGROUND_COLOUR)
+
+#create buttons and canvas callback
+frame.set_draw_handler(draw_complex)
+
+#frame.add_button("Aduip",audio_assist_toggle)
+frame.set_keydown_handler(keyboardShortCuts)
+frame.set_mouseclick_handler(mouse_handler)
+timer = simplegui.create_timer(100, timer_handler)
+frame.add_label("GAME CONTROLS")
+frame.add_label("Audio")
+frame.add_button("Volume Up", Volume_up, 200)
+frame.add_button("Volume Down", Volume_Down, 200)
+frame.add_button("Mute", Mute_Volume, 200)
+frame.add_button("Audio Assist On/Off",audio_assist_toggle,200)
+frame.add_label("Display")
+frame.add_button("Toggle Layout", Switch_layout, 200)
+frame.add_button("Increase Font", Increase_Font, 200)
+frame.add_button("Decrease Font", Decrease_Font, 200)
+frame.add_label("Simple Layout Background")
+frame.add_button("Green/Blue", bckg_toggle, 200)
+frame.add_label("Statistics")
+frame.add_button("Scatter Plot", scatter_plot, 200)
+frame.add_button("Start Over", start_over, 200)
+frame.add_button('Quit', frame.stop)
+frame.add_label("Shortcut Keys")
+frame.add_label("Hit = F")
+frame.add_label("Stand = J")
+frame.add_label("Deal = Space")
+
+#global dealer_h, player_h
+dealer_h = []
+player_h = []
+
+# get things rolling
+deal()
+frame.start()
