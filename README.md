@@ -1,6 +1,6 @@
 # blackjack
 pyskulptor black jack
-roject Overview:
+Project Overview:
 This document specifies the requirements met to improve an existing web interface provided with a simple game of Blackjack. 
 Using CodeSkulptor.3 (https://py3.codeskulptor.org)
 
